@@ -1,0 +1,61 @@
+cargo-features = ["trim-paths", "panic-immediate-abort", "profile-rustflags"]
+
+[package]
+name = "fontloader"
+version = "0.1.0"
+edition = "2024"
+authors = ["TransparentLC"]
+repository = "https://github.com/TransparentLC/fontloader"
+
+[profile.dev]
+incremental = true
+rustflags = ["-Zthreads=8"]
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "immediate-abort"
+strip = true
+trim-paths = "all"
+rustflags = [
+    "-Cdebuginfo=0",
+    "-Zthreads=8",
+    "-Zlocation-detail=none",
+    "-Zfmt-debug=none",
+]
+
+[features]
+default = ["dir", "archive"]
+# 遍历并加载文件夹中的字体
+dir = ["dep:walkdir"]
+archive = ["archive-zip", "archive-7z", "archive-rar", "archive-tar"]
+# 从 ZIP 压缩包中遍历并加载字体
+archive-zip = ["dep:tempdir", "dep:zip"]
+# 从 7z 压缩包中遍历并加载字体
+archive-7z = ["dep:tempdir", "dep:sevenz-rust2"]
+# 从 RAR 压缩包中遍历并加载字体
+archive-rar = ["dep:tempdir", "dep:unrar"]
+# 从 tarball（包括压缩过的 tar.{gz,bz2,xz,zstd}）中遍历并加载字体
+archive-tar = ["dep:tempdir", "dep:tar", "dep:flate2", "dep:bzip2", "dep:xz2", "dep:zstd"]
+
+[dependencies]
+anyhow = "1"
+bzip2 = { version = "0.6", optional = true}
+env_logger = { version = "0.11", default-features = false, features = ["auto-color", "humantime"] }
+flate2 = { version = "1", optional = true}
+log = "0.4"
+sevenz-rust2 = { version = "0.20", optional = true, default-features = false, features = ["bzip2", "ppmd", "brotli", "deflate", "lz4", "zstd"]}
+tar = { version = "0.4", optional = true }
+tempdir = { version = "0.3", optional = true }
+unrar = { version = "0.5", optional = true }
+walkdir = { version = "2", optional = true }
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Graphics_Gdi",
+] }
+windows-strings = "0.5"
+xz2 = { version = "0.1", optional = true }
+zip = { version = "1", optional = true, default-features = false, features = ["deflate"] }
+zstd = { version = "0.13", optional = true, default-features = false }

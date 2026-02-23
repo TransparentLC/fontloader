@@ -1,0 +1,52 @@
+name: build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rust-src
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+      - name: Check Rust host
+        shell: bash
+        id: rust-host
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "rust_host=$(rustc -vV | grep 'host: ' | cut -d ' ' -f 2)" >> $GITHUB_OUTPUT
+      - name: Build
+        id: build
+        shell: bash
+        run: |
+          cargo build --release -Z build-std=std,panic_abort -Z build-std-features=optimize_for_size
+          if [ $RUNNER_OS == "Windows" ]; then
+            echo "executable=target/release/fontloader.exe" >> $GITHUB_OUTPUT
+          fi
+      - name: Apply UPX compression
+        shell: bash
+        run: upx --ultra-brute ${{ steps.build.outputs.executable }}
+      - name: Upload result
+        uses: actions/upload-artifact@v6
+        with:
+          name: fontloader-${{ steps.rust-host.outputs.rust_host }}
+          path: ${{ steps.build.outputs.executable }}
+          if-no-files-found: error
+          compression-level: 9
