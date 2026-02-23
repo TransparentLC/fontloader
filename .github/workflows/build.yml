@@ -32,6 +32,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           echo "rust_host=$(rustc -vV | grep 'host: ' | cut -d ' ' -f 2)" >> $GITHUB_OUTPUT
+      - name: Install system dependencies
+        shell: bash
+        run: |
+          if [ $RUNNER_OS == "Windows" ]; then
+            choco install upx --no-progress
+          fi
       - name: Build
         id: build
         shell: bash
