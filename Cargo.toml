@@ -2,7 +2,7 @@ cargo-features = ["trim-paths", "panic-immediate-abort", "profile-rustflags"]
 
 [package]
 name = "fontloader"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["TransparentLC"]
 repository = "https://github.com/TransparentLC/fontloader"
@@ -41,11 +41,11 @@ archive-tar = ["dep:tempdir", "dep:tar", "dep:flate2", "dep:bzip2", "dep:xz2", "
 
 [dependencies]
 anyhow = "1"
-bzip2 = { version = "0.6", optional = true}
+bzip2 = { version = "0.6", optional = true }
 env_logger = { version = "0.11", default-features = false, features = ["auto-color", "humantime"] }
-flate2 = { version = "1", optional = true}
+flate2 = { version = "1", optional = true }
 log = "0.4"
-sevenz-rust2 = { version = "0.20", optional = true, default-features = false, features = ["bzip2", "ppmd", "brotli", "deflate", "lz4", "zstd"]}
+sevenz-rust2 = { version = "0.20", optional = true, default-features = false, features = ["bzip2", "ppmd", "brotli", "deflate", "lz4", "zstd"] }
 tar = { version = "0.4", optional = true }
 tempdir = { version = "0.3", optional = true }
 unrar = { version = "0.5", optional = true }
