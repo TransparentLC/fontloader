@@ -34,6 +34,8 @@ cargo build --release -Z build-std=std,panic_abort -Z build-std-features=optimiz
 
 Commit message 需要符合 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/v1.0.0/) 规范。
 
+设置环境变量 `RUST_LOG=debug` 可以查看 DEBUG 级别的日志。
+
 ### 不会考虑的功能
 
 * 适配 Windows 以外的系统（真的需要这个吗？）
@@ -52,7 +54,7 @@ Commit message 需要符合 [Conventional Commits](https://www.conventionalcommi
 
 遍历文件夹和压缩包是原版 FontLoader 没有实现的功能。对于压缩包，会先把里面的字体解压到临时目录然后再加载。
 
-cryptw 的原始版本在加载字体后没有[调用 `SendMessageW` 发送 `WM_FONTCHANGE`](https://learn.microsoft.com/zh-cn/windows/win32/gdi/wm-fontchange)，因此其他程序可能无法得知字体变更，这个问题最大的影响是在 Photoshop 等程序中需要重新启动才能使用加载的字体，比较麻烦。sfc9982 的备份和这个项目都加上了 `SendMessageW` 修正这个问题。不过，有些程序可能没有对这一点进行适配，此时仍然需要重新启动才能使用加载的字体。
+cryptw 的原始版本在加载字体后没有[发送 `WM_FONTCHANGE`](https://learn.microsoft.com/zh-cn/windows/win32/gdi/wm-fontchange)，因此其他程序可能无法得知字体变更，这个问题最大的影响是在 Photoshop 等程序中需要重新启动才能使用加载的字体，比较麻烦。sfc9982 的备份和这个项目都修正了这个问题。不过，有些程序可能没有对这一点进行适配，此时仍然需要重新启动才能使用加载的字体。
 
 加载字体后对一些应用的测试：
 
