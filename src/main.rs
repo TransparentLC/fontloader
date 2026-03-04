@@ -1,7 +1,10 @@
 use log::{debug, error, info, warn};
 use std::io::{self, Read};
-use windows::Win32::UI::WindowsAndMessaging::{
-    HWND_BROADCAST, MB_ICONINFORMATION, MB_OK, MessageBoxW, SendMessageW, WM_FONTCHANGE,
+use windows::Win32::{
+    Foundation::{LPARAM, WPARAM},
+    UI::WindowsAndMessaging::{
+        HWND_BROADCAST, MB_ICONINFORMATION, MB_OK, MessageBoxW, PostMessageW, WM_FONTCHANGE,
+    },
 };
 use windows_strings::h;
 
@@ -79,9 +82,11 @@ fn main() {
             return false;
         }
     });
-    debug!("Call SendMessageW WM_FONTCHANGE");
+    debug!("Call PostMessageW WM_FONTCHANGE");
     unsafe {
-        SendMessageW(HWND_BROADCAST, WM_FONTCHANGE, None, None);
+        if let Err(err) = PostMessageW(Some(HWND_BROADCAST), WM_FONTCHANGE, WPARAM(0), LPARAM(0)) {
+            warn!("Failed to call PostMessageW WM_FONTCHANGE: {err}");
+        }
     }
 
     warn!("Press ENTER to unload fonts");
@@ -106,8 +111,10 @@ fn main() {
         fs.unload();
         info!("Unloaded font from \"{}\"", fs.get_path());
     });
-    debug!("Call SendMessageW WM_FONTCHANGE");
+    debug!("Call PostMessageW WM_FONTCHANGE");
     unsafe {
-        SendMessageW(HWND_BROADCAST, WM_FONTCHANGE, None, None);
+        if let Err(err) = PostMessageW(Some(HWND_BROADCAST), WM_FONTCHANGE, WPARAM(0), LPARAM(0)) {
+            warn!("Failed to call PostMessageW WM_FONTCHANGE: {err}");
+        }
     }
 }
