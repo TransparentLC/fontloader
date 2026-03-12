@@ -30,6 +30,10 @@ impl FontSource for FontDir {
                 match f.load() {
                     Ok(_) => {
                         self.loaded.push(f);
+                        info!(
+                            "Found font \"{path_str}\" from \"{}\" and loaded",
+                             self.path
+                        );
                     }
                     Err(err) => {
                         warn!(
