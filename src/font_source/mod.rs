@@ -115,10 +115,10 @@ pub fn from_path(path: String) -> Option<Box<dyn FontSource>> {
         {
             let path_lowercase = path.to_ascii_lowercase();
             for (ext, compression) in [
-                ("tar.gz", TarCompression::GZ),
-                ("tar.bz2", TarCompression::BZ2),
-                ("tar.xz", TarCompression::XZ),
-                ("tar.zst", TarCompression::ZSTD),
+                (".tar.gz", TarCompression::GZ),
+                (".tar.bz2", TarCompression::BZ2),
+                (".tar.xz", TarCompression::XZ),
+                (".tar.zst", TarCompression::ZSTD),
             ] {
                 if path_lowercase.ends_with(ext) {
                     return Some(Box::new(FontArchiveTar::new(path, compression)));
