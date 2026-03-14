@@ -34,6 +34,12 @@ cargo build --release -Z build-std=std,panic_abort -Z build-std-features=optimiz
 
 Commit message 需要符合 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/v1.0.0/) 规范。
 
+代码需要通过 Clippy 的检查：
+
+```sh
+cargo clippy --all-targets --all-features -- -D warnings
+```
+
 设置环境变量 `RUST_LOG=debug` 可以查看 DEBUG 级别的日志。
 
 ### 不会考虑的功能
