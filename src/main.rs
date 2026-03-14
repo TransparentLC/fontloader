@@ -30,23 +30,23 @@ fn main() {
     let mut stdin = io::stdin();
 
     #[cfg(feature = "parallel")]
-    if std::env::var("RAYON_NUM_THREADS").is_err() {
-        if let Ok(parallelism) = std::thread::available_parallelism() {
-            let parallelism = parallelism.get();
-            let threads = parallelism * 4;
+    if std::env::var("RAYON_NUM_THREADS").is_err()
+        && let Ok(parallelism) = std::thread::available_parallelism()
+    {
+        let parallelism = parallelism.get();
+        let threads = parallelism * 4;
 
-            match rayon::ThreadPoolBuilder::new()
-                .num_threads(threads)
-                .build_global()
-            {
-                Ok(_) => {
-                    debug!("Build thread pool with threads: {threads} Parallelism: {parallelism}");
-                }
-                Err(err) => {
-                    warn!("Failed to build thread pool: {err}");
-                }
-            };
-        }
+        match rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build_global()
+        {
+            Ok(_) => {
+                debug!("Build thread pool with threads: {threads} Parallelism: {parallelism}");
+            }
+            Err(err) => {
+                warn!("Failed to build thread pool: {err}");
+            }
+        };
     }
 
     info!(
@@ -75,7 +75,7 @@ fn main() {
     } else {
         std::env::args().skip(1).collect()
     };
-    if args.len() == 0 {
+    if args.is_empty() {
         warn!("No input file");
         unsafe {
             MessageBoxW(

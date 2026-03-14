@@ -118,7 +118,7 @@ pub fn from_path(path: String) -> Option<Box<dyn FontSource>> {
                 (".tar.gz", TarCompression::GZ),
                 (".tar.bz2", TarCompression::BZ2),
                 (".tar.xz", TarCompression::XZ),
-                (".tar.zst", TarCompression::ZSTD),
+                (".tar.zst", TarCompression::Zstd),
             ] {
                 if path_lowercase.ends_with(ext) {
                     return Some(Box::new(FontArchiveTar::new(path, compression)));

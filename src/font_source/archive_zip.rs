@@ -73,14 +73,14 @@ impl FontSource for FontArchiveZip {
                         "Extracted font \"{}\" from \"{}\" and loaded",
                         name, self.path
                     );
-                    return Some((name.clone(), f));
+                    Some((name.clone(), f))
                 }
                 Err(err) => {
                     warn!(
                         "Skipped font \"{}\" from \"{}\" failed to load: {}",
                         name, self.path, err
                     );
-                    return None;
+                    None
                 }
             }
         };

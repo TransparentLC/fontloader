@@ -11,10 +11,8 @@ use std::{
     io::{self, Read},
     time::Instant,
 };
-use tar;
 use tempdir::TempDir;
 use xz2::read::XzDecoder;
-use zstd;
 
 #[derive(Debug)]
 pub enum TarCompression {
@@ -22,7 +20,7 @@ pub enum TarCompression {
     GZ,
     BZ2,
     XZ,
-    ZSTD,
+    Zstd,
 }
 
 /// 包含字体的 tarball，可以是原始文件或 tar.{gz,bz2,xz,zstd} 压缩
@@ -53,7 +51,7 @@ impl FontSource for FontArchiveTar {
             TarCompression::GZ => Box::new(GzDecoder::new(archive)),
             TarCompression::BZ2 => Box::new(BzDecoder::new(archive)),
             TarCompression::XZ => Box::new(XzDecoder::new(archive)),
-            TarCompression::ZSTD => Box::new(zstd::Decoder::new(archive)?),
+            TarCompression::Zstd => Box::new(zstd::Decoder::new(archive)?),
         };
         let mut archive = tar::Archive::new(archive);
         let mut extracted = vec![];
@@ -96,14 +94,14 @@ impl FontSource for FontArchiveTar {
                         "Extracted font \"{}\" from \"{}\" and loaded",
                         name, self.path
                     );
-                    return Some((name.clone(), f));
+                    Some((name.clone(), f))
                 }
                 Err(err) => {
                     warn!(
                         "Skipped font \"{}\" from \"{}\" failed to load: {}",
                         name, self.path, err
                     );
-                    return None;
+                    None
                 }
             }
         };

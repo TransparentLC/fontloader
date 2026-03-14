@@ -6,7 +6,6 @@ use log::{debug, info, warn};
 use rayon::iter::{IntoParallelRefIterator, ParallelExtend, ParallelIterator};
 use std::{fs, path::Path, time::Instant};
 use tempdir::TempDir;
-use unrar;
 
 /// 包含字体的 RAR 压缩包
 pub struct FontArchiveRar {
@@ -34,7 +33,7 @@ impl FontSource for FontArchiveRar {
         while let Some(header) = archive.read_header()? {
             let path = Path::new(&header.entry().filename);
             let path_str = path.to_str().unwrap().to_string();
-            if !path_is_font(&path) {
+            if !path_is_font(path) {
                 archive = header.skip()?;
                 continue;
             }
@@ -68,14 +67,14 @@ impl FontSource for FontArchiveRar {
                         "Extracted font \"{}\" from \"{}\" and loaded",
                         name, self.path
                     );
-                    return Some((name.clone(), f));
+                    Some((name.clone(), f))
                 }
                 Err(err) => {
                     warn!(
                         "Skipped font \"{}\" from \"{}\" failed to load: {}",
                         name, self.path, err
                     );
-                    return None;
+                    None
                 }
             }
         };

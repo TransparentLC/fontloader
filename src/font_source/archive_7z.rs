@@ -4,7 +4,6 @@ use cfg_if::cfg_if;
 use log::{debug, info, warn};
 #[cfg(feature = "parallel")]
 use rayon::iter::{IntoParallelRefIterator, ParallelExtend, ParallelIterator};
-use sevenz_rust2;
 use std::{
     fs::{self, File},
     io,
@@ -81,14 +80,14 @@ impl FontSource for FontArchive7z {
                         "Extracted font \"{}\" from \"{}\" and loaded",
                         name, self.path
                     );
-                    return Some((name.clone(), f));
+                    Some((name.clone(), f))
                 }
                 Err(err) => {
                     warn!(
                         "Skipped font \"{}\" from \"{}\" failed to load: {}",
                         name, self.path, err
                     );
-                    return None;
+                    None
                 }
             }
         };
