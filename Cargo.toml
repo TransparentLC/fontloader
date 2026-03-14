@@ -2,7 +2,7 @@ cargo-features = ["trim-paths", "panic-immediate-abort", "profile-rustflags"]
 
 [package]
 name = "fontloader"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2024"
 authors = ["TransparentLC"]
 repository = "https://github.com/TransparentLC/fontloader"
