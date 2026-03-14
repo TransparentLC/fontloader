@@ -22,7 +22,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@nightly
         with:
-          components: rust-src
+          components: clippy, rust-src
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
       - name: Check Rust host
@@ -32,6 +32,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           echo "rust_host=$(rustc -vV | grep 'host: ' | cut -d ' ' -f 2)" >> $GITHUB_OUTPUT
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
       - name: Install system dependencies
         shell: bash
         run: |
