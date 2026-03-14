@@ -1,8 +1,16 @@
 use crate::font_source::{FontFile, FontSource, TEMPDIR_PREFIX, path_is_font};
 use anyhow::Result;
+use cfg_if::cfg_if;
 use log::{debug, info, warn};
+#[cfg(feature = "parallel")]
+use rayon::iter::{IntoParallelRefIterator, ParallelExtend, ParallelIterator};
 use sevenz_rust2;
-use std::{fs, fs::File, io, path::Path};
+use std::{
+    fs::{self, File},
+    io,
+    path::Path,
+    time::Instant,
+};
 use tempdir::TempDir;
 
 /// 包含字体的 7z 压缩包
@@ -29,6 +37,8 @@ impl FontSource for FontArchive7z {
             File::open(&self.path)?,
             sevenz_rust2::Password::empty(),
         )?;
+        let mut extracted = vec![];
+        let start = Instant::now();
         archive
             .for_each_entries(|entry, reader| {
                 let path = Path::new(&entry.name);
@@ -40,7 +50,7 @@ impl FontSource for FontArchive7z {
 
                 let extract = self.extract.path().join(Path::new(&entry.name));
                 debug!(
-                    "Found font file \"{}\" from 7z \"{}\" and extract to \"{}\"",
+                    "Found font \"{}\" from 7z \"{}\" and extract to \"{}\"",
                     entry.name,
                     self.path,
                     extract.to_str().unwrap(),
@@ -51,33 +61,61 @@ impl FontSource for FontArchive7z {
                     fs::create_dir_all(parent)?;
                 }
                 File::create(&extract).and_then(|mut outfile| io::copy(reader, &mut outfile))?;
-                let mut f = FontFile::new(extract.to_str().unwrap().to_string());
-                match f.load() {
-                    Ok(_) => {
-                        self.loaded.push((entry.name.clone(), f));
-                        info!(
-                            "Extracted font \"{}\" from \"{}\" and loaded",
-                            entry.name, self.path
-                        );
-                    }
-                    Err(err) => {
-                        warn!(
-                            "Skipped font \"{}\" from \"{}\" failed to load: {}",
-                            entry.name, self.path, err
-                        );
-                    }
-                }
+                extracted.push((entry.name.clone(), extract.to_str().unwrap().to_string()));
 
                 Ok(true)
             })
-            .map(|_| ())
-            .map_err(|err| err.into())
+            .map(|_| ())?;
+        debug!(
+            "Extracted fonts from 7z \"{}\" in {}s",
+            self.path,
+            start.elapsed().as_secs_f64()
+        );
+
+        let extracted_op = |name_extract: &(String, String)| -> Option<(String, FontFile)> {
+            let (name, extract) = name_extract;
+            let mut f = FontFile::new(extract.clone());
+            match f.load() {
+                Ok(_) => {
+                    info!(
+                        "Extracted font \"{}\" from \"{}\" and loaded",
+                        name, self.path
+                    );
+                    return Some((name.clone(), f));
+                }
+                Err(err) => {
+                    warn!(
+                        "Skipped font \"{}\" from \"{}\" failed to load: {}",
+                        name, self.path, err
+                    );
+                    return None;
+                }
+            }
+        };
+        cfg_if! {
+            if #[cfg(feature = "parallel")] {
+                let iter = extracted.par_iter();
+                self.loaded.par_extend(iter.filter_map(extracted_op));
+            } else {
+                let iter = extracted.iter();
+                self.loaded.extend(iter.filter_map(extracted_op));
+            }
+        }
+
+        Ok(())
     }
 
     fn unload(&self) {
-        self.loaded.iter().for_each(|(name, f)| {
+        cfg_if! {
+            if #[cfg(feature = "parallel")] {
+                let iter = self.loaded.par_iter();
+            } else {
+                let iter = self.loaded.iter();
+            }
+        }
+        iter.for_each(|(name, f)| {
             debug!(
-                "Unload font file \"{}\" (\"{}\") from 7z \"{}\"",
+                "Unload font \"{}\" (\"{}\") from 7z \"{}\"",
                 f.path, name, self.path
             );
             f.unload();

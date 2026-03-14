@@ -1,5 +1,11 @@
+use cfg_if::cfg_if;
 use log::{debug, error, info, warn};
-use std::io::{self, Read};
+#[cfg(feature = "parallel")]
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use std::{
+    io::{self, Read},
+    time::Instant,
+};
 use windows::Win32::{
     Foundation::{LPARAM, WPARAM},
     UI::WindowsAndMessaging::{
@@ -23,6 +29,26 @@ fn main() {
     .unwrap();
     let mut stdin = io::stdin();
 
+    #[cfg(feature = "parallel")]
+    if std::env::var("RAYON_NUM_THREADS").is_err() {
+        if let Ok(parallelism) = std::thread::available_parallelism() {
+            let parallelism = parallelism.get();
+            let threads = parallelism * 4;
+
+            match rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build_global()
+            {
+                Ok(_) => {
+                    debug!("Build thread pool with threads: {threads} Parallelism: {parallelism}");
+                }
+                Err(err) => {
+                    warn!("Failed to build thread pool: {err}");
+                }
+            };
+        }
+    }
+
     info!(
         "{} v{} by {}",
         env!("CARGO_PKG_NAME"),
@@ -33,6 +59,8 @@ fn main() {
 
     let args: Vec<String> = if cfg!(debug_assertions) {
         vec![
+            "sample/DreamHanSerif".to_string(),
+            "sample/DreamHanSans".to_string(),
             // "sample/RenOuFangSong-16.ttf".to_string(),
             // "sample/游趣体0.812".to_string(),
             // "sample/阿里健康体2.0_猫啃网.zip".to_string(),
@@ -72,16 +100,27 @@ fn main() {
         }
     }
 
-    font_sources.retain_mut(|fs| match fs.load() {
-        Ok(_) => {
-            info!("Loaded font from \"{}\"", fs.get_path());
-            return true;
+    let start = Instant::now();
+    cfg_if! {
+        if #[cfg(feature = "parallel")] {
+            let iter = font_sources.into_par_iter();
+        } else {
+            let iter = font_sources.into_iter();
         }
-        Err(err) => {
-            error!("Failed to load font from \"{}\": {err}", fs.get_path());
-            return false;
-        }
-    });
+    }
+    font_sources = iter
+        .filter_map(|mut fs| match fs.load() {
+            Ok(_) => {
+                info!("Loaded font from \"{}\"", fs.get_path());
+                Some(fs)
+            }
+            Err(err) => {
+                error!("Failed to font load from \"{}\": {err}", fs.get_path());
+                None
+            }
+        })
+        .collect();
+    info!("Loaded font in {}s", start.elapsed().as_secs_f64());
     debug!("Call PostMessageW WM_FONTCHANGE");
     unsafe {
         if let Err(err) = PostMessageW(Some(HWND_BROADCAST), WM_FONTCHANGE, WPARAM(0), LPARAM(0)) {
@@ -107,10 +146,19 @@ fn main() {
     //     );
     // };
 
-    font_sources.iter().for_each(|fs| {
+    let start = Instant::now();
+    cfg_if! {
+        if #[cfg(feature = "parallel")] {
+            let iter = font_sources.par_iter();
+        } else {
+            let iter = font_sources.iter();
+        }
+    }
+    iter.for_each(|fs| {
         fs.unload();
         info!("Unloaded font from \"{}\"", fs.get_path());
     });
+    info!("Unloaded font in {}s", start.elapsed().as_secs_f64());
     debug!("Call PostMessageW WM_FONTCHANGE");
     unsafe {
         if let Err(err) = PostMessageW(Some(HWND_BROADCAST), WM_FONTCHANGE, WPARAM(0), LPARAM(0)) {

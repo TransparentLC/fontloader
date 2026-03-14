@@ -26,7 +26,9 @@ rustflags = [
 ]
 
 [features]
-default = ["dir", "archive"]
+default = ["parallel", "dir", "archive"]
+# 使用 rayon 并行加载和卸载字体
+parallel = ["dep:rayon"]
 # 遍历并加载文件夹中的字体
 dir = ["dep:walkdir"]
 archive = ["archive-zip", "archive-7z", "archive-rar", "archive-tar"]
@@ -42,9 +44,11 @@ archive-tar = ["dep:tempdir", "dep:tar", "dep:flate2", "dep:bzip2", "dep:xz2", "
 [dependencies]
 anyhow = "1"
 bzip2 = { version = "0.6", optional = true }
+cfg-if = "1"
 env_logger = { version = "0.11", default-features = false, features = ["auto-color", "humantime"] }
 flate2 = { version = "1", optional = true }
 log = "0.4"
+rayon = { version = "1", optional = true }
 sevenz-rust2 = { version = "0.20", optional = true, default-features = false, features = ["bzip2", "ppmd", "brotli", "deflate", "lz4", "zstd"] }
 tar = { version = "0.4", optional = true }
 tempdir = { version = "0.3", optional = true }

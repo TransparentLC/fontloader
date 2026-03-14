@@ -1,7 +1,10 @@
 use crate::font_source::{FontFile, FontSource, path_is_font};
 use anyhow::Result;
+use cfg_if::cfg_if;
 use log::{debug, info, warn};
-use walkdir::WalkDir;
+#[cfg(feature = "parallel")]
+use rayon::iter::{IntoParallelRefIterator, ParallelBridge, ParallelExtend, ParallelIterator};
+use walkdir::{DirEntry, WalkDir};
 
 /// 包含字体的文件夹
 pub struct FontDir {
@@ -21,7 +24,8 @@ impl FontDir {
 impl FontSource for FontDir {
     fn load(&mut self) -> Result<()> {
         debug!("Walking dir \"{}\"", self.path);
-        for entry in WalkDir::new(&self.path).into_iter().filter_map(|e| e.ok()) {
+
+        let entry_op = |entry: DirEntry| -> Option<FontFile> {
             let path = entry.path();
             if path_is_font(path) {
                 let path_str = path.to_str().unwrap().to_string();
@@ -29,11 +33,11 @@ impl FontSource for FontDir {
                 let mut f = FontFile::new(path_str.clone());
                 match f.load() {
                     Ok(_) => {
-                        self.loaded.push(f);
                         info!(
                             "Found font \"{path_str}\" from \"{}\" and loaded",
-                             self.path
+                            self.path
                         );
+                        return Some(f);
                     }
                     Err(err) => {
                         warn!(
@@ -43,12 +47,31 @@ impl FontSource for FontDir {
                     }
                 }
             }
+            None
+        };
+
+        let iter = WalkDir::new(&self.path).into_iter().filter_map(|e| e.ok());
+        cfg_if! {
+            if #[cfg(feature = "parallel")] {
+                let iter = iter.par_bridge();
+                self.loaded.par_extend(iter.filter_map(entry_op));
+            } else {
+                self.loaded.extend(iter.filter_map(entry_op));
+            }
         }
+
         Ok(())
     }
 
     fn unload(&self) {
-        self.loaded.iter().for_each(|f| {
+        cfg_if! {
+            if #[cfg(feature = "parallel")] {
+                let iter = self.loaded.par_iter();
+            } else {
+                let iter = self.loaded.iter();
+            }
+        }
+        iter.for_each(|f| {
             f.unload();
             info!("Unloaded font \"{}\" from dir \"{}\"", f.path, self.path);
         });

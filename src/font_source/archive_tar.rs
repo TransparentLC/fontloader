@@ -1,11 +1,15 @@
 use crate::font_source::{FontFile, FontSource, TEMPDIR_PREFIX, path_is_font};
 use anyhow::Result;
 use bzip2::read::BzDecoder;
+use cfg_if::cfg_if;
 use flate2::read::GzDecoder;
 use log::{debug, info, warn};
+#[cfg(feature = "parallel")]
+use rayon::iter::{IntoParallelRefIterator, ParallelExtend, ParallelIterator};
 use std::{
     fs::{self, File},
     io::{self, Read},
+    time::Instant,
 };
 use tar;
 use tempdir::TempDir;
@@ -52,6 +56,8 @@ impl FontSource for FontArchiveTar {
             TarCompression::ZSTD => Box::new(zstd::Decoder::new(archive)?),
         };
         let mut archive = tar::Archive::new(archive);
+        let mut extracted = vec![];
+        let start = Instant::now();
         for entry in archive.entries()? {
             let mut entry = entry?;
             let path = entry.path()?;
@@ -62,7 +68,7 @@ impl FontSource for FontArchiveTar {
             let extract = self.extract.path().join(&path);
             let path_str = path.to_str().unwrap().to_string();
             debug!(
-                "Found font file \"{}\" from tar \"{}\" and extract to \"{}\"",
+                "Found font \"{}\" from tar \"{}\" and extract to \"{}\"",
                 path_str,
                 self.path,
                 extract.to_str().unwrap(),
@@ -73,30 +79,58 @@ impl FontSource for FontArchiveTar {
                 fs::create_dir_all(parent)?;
             }
             File::create(&extract).and_then(|mut outfile| io::copy(&mut entry, &mut outfile))?;
-            let mut f = FontFile::new(extract.to_str().unwrap().to_string());
+            extracted.push((path_str, extract.to_str().unwrap().to_string()));
+        }
+        debug!(
+            "Extracted fonts from tar \"{}\" in {}s",
+            self.path,
+            start.elapsed().as_secs_f64()
+        );
+
+        let extracted_op = |name_extract: &(String, String)| -> Option<(String, FontFile)> {
+            let (name, extract) = name_extract;
+            let mut f = FontFile::new(extract.clone());
             match f.load() {
                 Ok(_) => {
-                    self.loaded.push((path_str.clone(), f));
                     info!(
                         "Extracted font \"{}\" from \"{}\" and loaded",
-                        path_str, self.path
+                        name, self.path
                     );
+                    return Some((name.clone(), f));
                 }
                 Err(err) => {
                     warn!(
                         "Skipped font \"{}\" from \"{}\" failed to load: {}",
-                        path_str, self.path, err
+                        name, self.path, err
                     );
+                    return None;
                 }
             }
+        };
+        cfg_if! {
+            if #[cfg(feature = "parallel")] {
+                let iter = extracted.par_iter();
+                self.loaded.par_extend(iter.filter_map(extracted_op));
+            } else {
+                let iter = extracted.iter();
+                self.loaded.extend(iter.filter_map(extracted_op));
+            }
         }
+
         Ok(())
     }
 
     fn unload(&self) {
-        self.loaded.iter().for_each(|(name, f)| {
+        cfg_if! {
+            if #[cfg(feature = "parallel")] {
+                let iter = self.loaded.par_iter();
+            } else {
+                let iter = self.loaded.iter();
+            }
+        }
+        iter.for_each(|(name, f)| {
             debug!(
-                "Unload font file \"{}\" (\"{}\") from tar \"{}\"",
+                "Unload font \"{}\" (\"{}\") from tar \"{}\"",
                 f.path, name, self.path
             );
             f.unload();

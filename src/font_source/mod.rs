@@ -60,7 +60,7 @@ fn path_is_font(path: &Path) -> bool {
 }
 
 /// 加载字体文件的源
-pub trait FontSource {
+pub trait FontSource: Send + Sync {
     /// 加载字体
     fn load(&mut self) -> Result<()>;
     /// 卸载字体
