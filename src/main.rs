@@ -115,7 +115,7 @@ fn main() {
                 Some(fs)
             }
             Err(err) => {
-                error!("Failed to font load from \"{}\": {err}", fs.get_path());
+                error!("Failed to load font from \"{}\": {err}", fs.get_path());
                 None
             }
         })
